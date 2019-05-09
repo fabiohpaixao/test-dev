@@ -16,7 +16,7 @@ class CreateOrdersTable extends Migration
         Schema::dropIfExists('orders');
         Schema::create('orders', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->integer('code')->unique();;
+            $table->string('code', 10);
             $table->unsignedBigInteger('client_id');
             $table->timestamps();
 

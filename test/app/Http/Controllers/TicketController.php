@@ -2,19 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Ticket;
 use Illuminate\Http\Request;
-use App\Repositories\TicketRepository;
+use PHPUnit\Framework\Constraint\Exception;
+use App\Ticket;
 
 class TicketController extends Controller
 {
-    protected $ticket;
-
-    public function __construct(TicketRepository $ticket)
-    {
-        $this->ticket = $ticket;
-    }
-
 
     /**
      * Display a listing of the resource.
@@ -23,7 +16,16 @@ class TicketController extends Controller
      */
     public function index()
     {
-        return view('tickets.index');
+        $tickets = Ticket::orderBy('tickets.created_at', 'desc')
+            ->join('clients', 'tickets.client_id', '=', 'clients.id')
+            ->join('orders', 'tickets.order_id', '=', 'orders.id')
+            ->paginate(5);
+
+        return view('tickets.index', compact('tickets'))
+            ->with('i', (request()->input(
+                'page',
+                1
+            ) - 1) * 5);
     }
 
     /**
@@ -46,41 +48,33 @@ class TicketController extends Controller
     {
         $request->validate([
             'client_name' => 'required',
-            'email_client' => 'required',
+            'client_email' => 'required',
             'order_code' => 'required',
             'title' => 'required',
             'content' => 'required',
         ]);
 
-        //$ticket = new TicketRepository();
-        $this->ticket->create($request);
+        if (!Ticket::createTicket($request))
+            return redirect()->route('tickets.create')
+                ->with('error', 'Código do pedido já cadatrado para outro cliente');
 
-        return redirect()->route('ticket.store')
-            ->with('success', 'Ticket created successfully.');
+
+        return redirect()->route('tickets.create')
+            ->with('success', 'Ticket criado com sucesso.');
     }
 
     /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function report(Request $request)
-    {
-        $tickets = Ticket::latest()->paginate(5);
-
-        return view('tickets.report', compact('tickets'))
-            ->with('i', (request()->input('page', 1) - 1) * 5);
-    }
-
-    /**
-     * Display the specified resource.
+     * Show Ticket
      *
      * @param  \App\Ticket  $ticket
      * @return \Illuminate\Http\Response
      */
     public function show(Ticket $ticket)
     {
+        $ticket = Ticket::find($ticket->id)
+            ->join('clients', 'tickets.client_id', '=', 'clients.id')
+            ->join('orders', 'tickets.order_id', '=', 'orders.id')->first();
+
         return view('tickets.show', compact('ticket'));
     }
 }
